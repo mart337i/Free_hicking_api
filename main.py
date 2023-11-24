@@ -7,9 +7,11 @@ from fastapi.responses import FileResponse
 import logging
 import base64
 from datetime import datetime
+from typing_extensions import Annotated
 import gpxpy
 import gpxpy.gpx
 from lxml import etree
+import tempfile
 
 #-------------------------------------------# - Database Integration and models
 from database import db, gpx_enabed
@@ -86,18 +88,17 @@ async def main():
 async def get_gpx_file():
     return FileResponse("/home/mart337i/code/repo/gpx-api/static/lillebaeltsstien.gpx")
 
-# Endpoint to upload a GPX file
 @app.post("/upload", response_model=GPXSchema)
-async def upload_gpx(file: UploadFile = File(...)):
-    # Here, implement your logic to handle the file and create the GPXSchema object
-    # For example:
+async def upload_gpx(file: Annotated[bytes, File(...)]):
+    return None
+
     gpx_schema = GPXSchema(
         gpxData=GPXData(
             file=FileInfo(
                 type=file.content_type,
                 name=file.filename,
                 size=len(await file.read()),
-                content=""  # Add the base64 encoded content here
+                content=""
             ),
             trackInfo=TrackInfo(),
             metadata=Metadata(
@@ -106,19 +107,14 @@ async def upload_gpx(file: UploadFile = File(...)):
             )
         )
     )
-    # Save to database or perform additional processing
     return gpx_schema
 
-# Endpoint to get all GPX data
 @app.get("/gpx-data", response_model=List[GPXSchema])
 async def get_all_gpx_data():
-    # Implement your logic to retrieve all GPX data from the database
     return []
 
-# Endpoint to get the latest GPX data
 @app.get("/gpx-data/latest", response_model=GPXSchema)
 async def get_latest_gpx_data():
-    # Implement your logic to retrieve the latest GPX data from the database
     return GPXSchema()
 
 
@@ -127,20 +123,16 @@ async def validate_gpx_file(file: UploadFile):
     if not GPX_XSD_PATH and DEBUG == True:
         return True
 
-    # Check MIME type
     if file.content_type != 'application/gpx+xml':
         raise HTTPException(status_code=400, detail="Invalid file type")
     
-    # Read file content
     contents = await file.read()
 
-    # Sanitize and parse with gpxpy
     try:
         gpx = gpxpy.parse(contents.decode())
     except gpxpy.gpx.GPXXMLSyntaxException:
         raise HTTPException(status_code=400, detail="Invalid GPX file")
 
-    # Validate against GPX schema
     with open(GPX_XSD_PATH, 'r') as schema_file:
         schema = etree.XMLSchema(etree.parse(schema_file))
         parser = etree.XMLParser(schema=schema, resolve_entities=False)
@@ -148,6 +140,4 @@ async def validate_gpx_file(file: UploadFile):
             etree.fromstring(contents, parser)
         except etree.XMLSyntaxError as e:
             raise HTTPException(status_code=400, detail=f"GPX schema validation error: {str(e)}")
-
-    # Return true if validation passes
     return True

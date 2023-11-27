@@ -1,22 +1,30 @@
 #-------------------------------------------# - Core libs
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import HTMLResponse
+from sys import exception
+from xml.etree.ElementTree import XMLParser
+from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, params
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi_pagination import Page, Params, add_pagination, paginate
 #-------------------------------------------# - Ekstra libs
 import logging
 import base64
+import io
 from datetime import datetime
 from typing_extensions import Annotated
 import gpxpy
 import gpxpy.gpx
 from lxml import etree
 import tempfile
+from pydantic import BaseModel, Field, Base64Str
+
+
+
 
 #-------------------------------------------# - Database Integration and models
-from database import db, gpx_enabed
-from models.gpx import GPXSchema, FileInfo,GPXData, TrackInfo,Metadata
 from typing import Optional, List, Dict
+from database import db, gpx_enabed
+from models.trail import Trail
 
 #-------------------------------------------# - STATIC
 import os
@@ -25,8 +33,8 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-DEBUG : bool = os.getenv("DEBUGMODE")
-GPX_XSD_PATH = os.getenv("GPX_XSD_PATH")
+DEBUG : bool = bool(os.getenv("DEBUGMODE"))
+GPX_XSD_PATH = str(os.getenv("GPX_XSD_PATH"))
 
 
 logging.basicConfig(filename='/home/mart337i/code/repo/gpx-api/log/app.log',
@@ -38,6 +46,7 @@ logging.basicConfig(filename='/home/mart337i/code/repo/gpx-api/log/app.log',
 _logger = logging.getLogger(__name__)
 
 app = FastAPI()
+add_pagination(app)
 app.mount("/static", StaticFiles(directory="/home/mart337i/code/repo/gpx-api/static"), name="static")
 
 
@@ -88,43 +97,46 @@ async def main():
 async def get_gpx_file():
     return FileResponse("/home/mart337i/code/repo/gpx-api/static/lillebaeltsstien.gpx")
 
-@app.post("/upload", response_model=GPXSchema)
-async def upload_gpx(file: Annotated[bytes, File(...)]):
-    return None
+@app.get("/trails/", response_model=Page[Trail])
+async def get_trails(trail : Trail):
+    trails = [Trail]
+    return paginate(trails)
+    
 
-    gpx_schema = GPXSchema(
-        gpxData=GPXData(
-            file=FileInfo(
-                type=file.content_type,
-                name=file.filename,
-                size=len(await file.read()),
-                content=""
-            ),
-            trackInfo=TrackInfo(),
-            metadata=Metadata(
-                createdDate=datetime.now(),
-                updatedDate=datetime.now()
-            )
-        )
-    )
-    return gpx_schema
-
-@app.get("/gpx-data", response_model=List[GPXSchema])
-async def get_all_gpx_data():
-    return []
-
-@app.get("/gpx-data/latest", response_model=GPXSchema)
-async def get_latest_gpx_data():
-    return GPXSchema()
+@app.post("/upload/", response_model=Trail)
+async def add_trail(trail : Trail):
+    if validate_gpx_file:
+        return trail
+    else: 
+        raise HTTPException(status_code=400, detail="Invalid GPX file")
 
 
+@app.post("/encode_gpx")
+async def encode_gpx(file: Annotated[bytes, File(...)]):
+    try: 
+        return base64.b64encode(file)
+    except exception as e: 
+        raise HTTPException(status_code=400, detail=f"Invalid GPX file {e}")
+
+
+@app.post("/decode-file/")
+async def decode_file(encoded_string: str):
+    try:
+        # Decode the base64 string
+        decoded_content = base64.b64decode(encoded_string)
+    except exception as e:
+        # Handle invalid base64 strings
+        raise HTTPException(status_code=400, detail=f"{e}")
+
+    # Return the decoded file as a streaming response
+    return StreamingResponse(io.BytesIO(decoded_content), media_type="application/octet-stream")
+
+
+@app.post("/validate_file")
 async def validate_gpx_file(file: UploadFile):
     
     if not GPX_XSD_PATH and DEBUG == True:
         return True
-
-    if file.content_type != 'application/gpx+xml':
-        raise HTTPException(status_code=400, detail="Invalid file type")
     
     contents = await file.read()
 
@@ -134,7 +146,7 @@ async def validate_gpx_file(file: UploadFile):
         raise HTTPException(status_code=400, detail="Invalid GPX file")
 
     with open(GPX_XSD_PATH, 'r') as schema_file:
-        schema = etree.XMLSchema(etree.parse(schema_file))
+        schema = etree.XMLSchema(etree.parse(schema_file,XMLParser))
         parser = etree.XMLParser(schema=schema, resolve_entities=False)
         try:
             etree.fromstring(contents, parser)

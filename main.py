@@ -1,5 +1,4 @@
 #-------------------------------------------# - Core libs
-from sys import exception
 from xml.etree.ElementTree import XMLParser
 from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, params
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -22,8 +21,8 @@ from pydantic import BaseModel, Field, Base64Str
 
 
 #-------------------------------------------# - Database Integration and models
-from typing import Optional, List, Dict
-from database import db, gpx_enabed
+# from typing import Optional, List, Dict
+# from database import db, gpx_enabed
 from models.trail import Trail
 
 #-------------------------------------------# - STATIC
@@ -35,19 +34,23 @@ load_dotenv()
 
 DEBUG : bool = bool(os.getenv("DEBUGMODE"))
 GPX_XSD_PATH = str(os.getenv("GPX_XSD_PATH"))
+LOGGING_PATH = str(os.getenv("LOGGING_PATH"))
+STATIC_FILES = str(os.getenv("LOGGING_PATH"))
 
 
-logging.basicConfig(filename='/home/mart337i/code/repo/gpx-api/log/app.log',
-                    filemode='a',
-                    level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
 
-_logger = logging.getLogger(__name__)
+
+# logging.basicConfig(filename=LOGGING_PATH,
+#                     filemode='a',
+#                     level=logging.INFO,
+#                     format='%(asctime)s - %(levelname)s - %(message)s',
+#                     datefmt='%Y-%m-%d %H:%M:%S')
+
+# _logger = logging.getLogger(__name__)
 
 app = FastAPI()
 add_pagination(app)
-app.mount("/static", StaticFiles(directory="/home/mart337i/code/repo/gpx-api/static"), name="static")
+# app.mount("/static", StaticFiles(directory=STATIC_FILES), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -95,7 +98,7 @@ async def main():
 
 @app.get("/gpx_test/")
 async def get_gpx_file():
-    return FileResponse("/home/mart337i/code/repo/gpx-api/static/lillebaeltsstien.gpx")
+    return FileResponse("/home/sysadmin/code/Free_hicking_api/static/lillebaeltsstien.gpx")
 
 @app.get("/trails/", response_model=Page[Trail])
 async def get_trails(trail : Trail):

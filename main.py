@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi_pagination import Page, Params, add_pagination, paginate
+from fastapi.middleware.cors import CORSMiddleware
 #-------------------------------------------# - Ekstra libs
 import logging
 import base64
@@ -17,24 +18,18 @@ import gpxpy.gpx
 from lxml import etree
 import tempfile
 from pydantic import BaseModel, Field, Base64Str
-
-
-
+import math
 
 #-------------------------------------------# - Database Integration and models
 from typing import Optional, List, Dict
 from database import db, gpx_enabed
 from models.trail import Trail
 
-#-------------------------------------------# - STATIC
-import os
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+#-------------------------------------------# - Routes
 
-DEBUG : bool = bool(os.getenv("DEBUGMODE"))
-GPX_XSD_PATH = str(os.getenv("GPX_XSD_PATH"))
+from routes.util_route import router as util_router
+from routes.trail_route import router as trail_router
 
 
 logging.basicConfig(filename='/home/mart337i/code/repo/gpx-api/log/app.log',
@@ -48,6 +43,18 @@ _logger = logging.getLogger(__name__)
 app = FastAPI()
 add_pagination(app)
 app.mount("/static", StaticFiles(directory="/home/mart337i/code/repo/gpx-api/static"), name="static")
+
+# This is not a problem in prod
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(util_router, prefix="/utils", tags=["Utils"]) 
+app.include_router(trail_router, prefix="/trail", tags=["Trail"]) 
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -85,71 +92,5 @@ def root():
 
     """
 
-@app.get("/test", response_class=HTMLResponse)
-async def main():
-    # Load and return the HTML page
-    with open("templates/index.html", "r") as file:
-        html_content = file.read()
-    return HTMLResponse(content=html_content)
 
 
-@app.get("/gpx_test/")
-async def get_gpx_file():
-    return FileResponse("/home/mart337i/code/repo/gpx-api/static/lillebaeltsstien.gpx")
-
-@app.get("/trails/", response_model=Page[Trail])
-async def get_trails(trail : Trail):
-    trails = [Trail]
-    return paginate(trails)
-    
-
-@app.post("/upload/", response_model=Trail)
-async def add_trail(trail : Trail):
-    if validate_gpx_file:
-        return trail
-    else: 
-        raise HTTPException(status_code=400, detail="Invalid GPX file")
-
-
-@app.post("/encode_gpx")
-async def encode_gpx(file: Annotated[bytes, File(...)]):
-    try: 
-        return base64.b64encode(file)
-    except exception as e: 
-        raise HTTPException(status_code=400, detail=f"Invalid GPX file {e}")
-
-
-@app.post("/decode-file/")
-async def decode_file(encoded_string: str):
-    try:
-        # Decode the base64 string
-        decoded_content = base64.b64decode(encoded_string)
-    except exception as e:
-        # Handle invalid base64 strings
-        raise HTTPException(status_code=400, detail=f"{e}")
-
-    # Return the decoded file as a streaming response
-    return StreamingResponse(io.BytesIO(decoded_content), media_type="application/octet-stream")
-
-
-@app.post("/validate_file")
-async def validate_gpx_file(file: UploadFile):
-    
-    if not GPX_XSD_PATH and DEBUG == True:
-        return True
-    
-    contents = await file.read()
-
-    try:
-        gpx = gpxpy.parse(contents.decode())
-    except gpxpy.gpx.GPXXMLSyntaxException:
-        raise HTTPException(status_code=400, detail="Invalid GPX file")
-
-    with open(GPX_XSD_PATH, 'r') as schema_file:
-        schema = etree.XMLSchema(etree.parse(schema_file,XMLParser))
-        parser = etree.XMLParser(schema=schema, resolve_entities=False)
-        try:
-            etree.fromstring(contents, parser)
-        except etree.XMLSyntaxError as e:
-            raise HTTPException(status_code=400, detail=f"GPX schema validation error: {str(e)}")
-    return True

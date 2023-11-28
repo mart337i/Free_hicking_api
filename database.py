@@ -7,9 +7,8 @@ import urllib.parse
 load_dotenv()
 
 # Access the serial number
-_username = os.getenv("USERNAME")
-_password = os.getenv("PASSWORD")
-
+_username = os.getenv("USERNAME", "")
+_password = os.getenv("PASSWORD", "")
 
 username = urllib.parse.quote_plus(_username)
 password = urllib.parse.quote_plus(_password)

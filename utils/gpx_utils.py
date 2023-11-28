@@ -1,7 +1,5 @@
 from ast import Pass
 import math
-from sys import exception
-import gpxpy
 from lxml import etree
 from lxml.etree import XMLParser
 from models.trail import Trail

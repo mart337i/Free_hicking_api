@@ -1,28 +1,15 @@
 #-------------------------------------------# - Core libs
-from xml.etree.ElementTree import XMLParser
-from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, params
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from fastapi_pagination import Page, Params, add_pagination, paginate
+from fastapi_pagination import add_pagination
 from fastapi.middleware.cors import CORSMiddleware
 #-------------------------------------------# - Ekstra libs
 import logging
-import base64
-import io
-from datetime import datetime
-from typing_extensions import Annotated
-import gpxpy
 import gpxpy.gpx
-from lxml import etree
-import tempfile
-from pydantic import BaseModel, Field, Base64Str
-import math
 
 #-------------------------------------------# - Database Integration and models
-# from typing import Optional, List, Dict
-# from database import db, gpx_enabed
-from models.trail import Trail
+
 
 
 #-------------------------------------------# - Routes
@@ -32,8 +19,12 @@ from routes.trail_route import router as trail_router
 from routes.trail_seeding_route import router as trail_seeding_route
 
 
+import os
 
-logging.basicConfig(filename='/home/mart337i/code/repo/gpx-api/log/app.log',
+LOGGING_PATH = str(os.getenv("LOGGING_PATH"))
+
+
+logging.basicConfig(filename=LOGGING_PATH,
                     filemode='a',
                     level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -43,7 +34,6 @@ logging.basicConfig(filename='/home/mart337i/code/repo/gpx-api/log/app.log',
 
 app = FastAPI()
 add_pagination(app)
-app.mount("/static", StaticFiles(directory="/home/mart337i/code/repo/gpx-api/static"), name="static")
 
 # This is not a problem in prod
 app.add_middleware(

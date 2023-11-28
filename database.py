@@ -21,7 +21,7 @@ client = MongoClient(uri)
 db = client.gpx
 
 #Table
-gpx_enabed = db.gpx_enabled
+gpx_enabled = db.gpx_enabled
 
 
 

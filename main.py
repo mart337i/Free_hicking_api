@@ -29,6 +29,8 @@ from models.trail import Trail
 
 from routes.util_route import router as util_router
 from routes.trail_route import router as trail_router
+from routes.trail_seeding_route import router as trail_seeding_route
+
 
 
 logging.basicConfig(filename='/home/mart337i/code/repo/gpx-api/log/app.log',
@@ -54,6 +56,8 @@ app.add_middleware(
 
 app.include_router(util_router, prefix="/utils", tags=["Utils"]) 
 app.include_router(trail_router, prefix="/trail", tags=["Trail"]) 
+app.include_router(trail_seeding_route, prefix="/trail_seeding", tags=["Trail Seeding"]) 
+
 
 
 @app.get("/", response_class=HTMLResponse)

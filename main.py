@@ -1,5 +1,4 @@
 #-------------------------------------------# - Core libs
-from sys import exception
 from xml.etree.ElementTree import XMLParser
 from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, params
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -21,8 +20,8 @@ from pydantic import BaseModel, Field, Base64Str
 import math
 
 #-------------------------------------------# - Database Integration and models
-from typing import Optional, List, Dict
-from database import db, gpx_enabed
+# from typing import Optional, List, Dict
+# from database import db, gpx_enabed
 from models.trail import Trail
 
 
@@ -38,7 +37,7 @@ logging.basicConfig(filename='/home/mart337i/code/repo/gpx-api/log/app.log',
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
-_logger = logging.getLogger(__name__)
+# _logger = logging.getLogger(__name__)
 
 app = FastAPI()
 add_pagination(app)

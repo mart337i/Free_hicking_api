@@ -1,17 +1,18 @@
 # util_routes.py
-from fastapi import APIRouter, UploadFile, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
-from fastapi_pagination import Page, Params, add_pagination, paginate
-from typing import Optional, List, Dict
-from models.trail import Trail
-from utils.gpx_utils import validate_gpx_file
-from database import db, gpx_enabled
+from fastapi_pagination import Page, paginate
+from typing import List
+from models.trail import Trail, TrailSchema
+from database import gpx_enabled
 from pydantic import ValidationError
+import logging
 import os
 
 GPX_STORAGE_PATH = str(os.getenv("GPX_STORAGE_PATH"))
 GPX_IMG_STORAGE_PATH = str(os.getenv("GPX_IMG_STORAGE_PATH"))
 
+_logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -30,8 +31,8 @@ async def get_trails():
         try:
             trail = Trail(**trail_data)
             trails.append(trail)
-        except ValidationError:
-            # Skip or handle the data that does not conform to the Trail model
+        except ValidationError as e:
+            _logger.warning(f"{e}")
             continue
 
     # Apply pagination to the trails list
@@ -68,3 +69,17 @@ async def get_gpx_file(filename: str):
 
     return FileResponse(file_path)
 
+
+@router.get("/get-img/{filename}")
+async def get_img_file(filename: str):
+    # Check if the file extension is .gpx
+    if not filename.endswith(".jpg"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Only img files are allowed.")
+
+    file_path = os.path.join(GPX_IMG_STORAGE_PATH, filename)
+
+    # Check if the file exists
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="File not found.")
+
+    return FileResponse(file_path)

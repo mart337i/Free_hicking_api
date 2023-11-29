@@ -1,7 +1,7 @@
 from ast import Pass
 import math
-from lxml import etree
-from lxml.etree import XMLParser
+import gpxpy
+import gpxpy.gpx
 from models.trail import Trail
 
 
@@ -14,6 +14,8 @@ load_dotenv()
 
 DEBUG : bool = bool(os.getenv("DEBUGMODE"))
 GPX_XSD_PATH = str(os.getenv("GPX_XSD_PATH"))
+GPX_STORAGE_PATH = str(os.getenv("GPX_STORAGE_PATH"))
+
 
 
 
@@ -59,3 +61,24 @@ def estimate_walking_float(distance_km):
     time_hours = distance_km / average_speed_kmh
 
     return time_hours
+
+
+def get_cords(filename : str):
+    if not filename.endswith(".gpx"):
+        return
+    
+    file_path = os.path.join(GPX_STORAGE_PATH, filename)
+
+    # Check if the file exists
+    if not os.path.isfile(file_path):
+        return
+    
+    gpx_file = open(file_path, 'r')
+    gpx = gpxpy.parse(gpx_file)
+
+    for track in gpx.tracks:
+        for segment in track.segments:
+            for point in segment.points:
+                print(f'Point at ({point.latitude},{point.longitude}) -> {point.elevation}')
+
+    

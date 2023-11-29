@@ -1,6 +1,7 @@
 # util_routes.py
 from fastapi import APIRouter, HTTPException
 from database import gpx_enabled
+from utils.gpx_utils import calculate_total_distance, estimate_walking_float
 import os
 
 GPX_STORAGE_PATH = str(os.getenv("GPX_STORAGE_PATH"))
@@ -43,3 +44,7 @@ async def list_files():
         return files
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+def getcords():
+    pass

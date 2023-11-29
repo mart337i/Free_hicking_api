@@ -11,5 +11,12 @@ class Trail(BaseModel):
     gpx_path : Optional[str]
     length : Optional[float]
     estimatedTime : Optional[float]
-    
+
+
+class TrailSchema(BaseModel):
+    name : Optional[str]
+    filename : Optional[str]
+    location : Optional[str]
+    image_path : Optional[str]
+    gpx_path : Optional[str]
     

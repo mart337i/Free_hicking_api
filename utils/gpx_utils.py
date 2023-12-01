@@ -3,9 +3,6 @@ import math
 import gpxpy
 import gpxpy.gpx
 from models.trail import Trail
-
-
-
 import os
 from dotenv import load_dotenv
 
@@ -19,12 +16,11 @@ GPX_STORAGE_PATH = str(os.getenv("GPX_STORAGE_PATH"))
 
 
 
-def validate_gpx_file(trail: Trail):
-    """ TODO :: 
-            add gpx validation 
+def validate_gpx_file(filename : str) -> bool: 
+    if not filename.endswith(".gpx"):
+        return False
     
-    """
-    pass
+    return True
 
 def calculate_total_distance(coords):
     def haversine(coord1, coord2):
@@ -41,7 +37,11 @@ def calculate_total_distance(coords):
 
     total_distance = 0
     for i in range(1, len(coords)):
-        total_distance += haversine(coords[i - 1], coords[i])
+        # Extracting latitude and longitude from GPXTrackPoint objects
+        lat1, lon1 = coords[i - 1].latitude, coords[i - 1].longitude
+        lat2, lon2 = coords[i].latitude, coords[i].longitude
+
+        total_distance += haversine((lat1, lon1), (lat2, lon2))
 
     return total_distance
 
@@ -63,22 +63,35 @@ def estimate_walking_float(distance_km):
     return time_hours
 
 
-def get_cords(filename : str):
-    if not filename.endswith(".gpx"):
-        return
+def get_gpx_info(filename : str):
+    
     
     file_path = os.path.join(GPX_STORAGE_PATH, filename)
 
     # Check if the file exists
     if not os.path.isfile(file_path):
-        return
+        return {
+            "name" : "",
+            "points" : [],
+            "file_path" : ""
+        }
     
     gpx_file = open(file_path, 'r')
     gpx = gpxpy.parse(gpx_file)
 
+    points = []
+    name = ""
+
+
     for track in gpx.tracks:
+        name = track.name
         for segment in track.segments:
             for point in segment.points:
-                print(f'Point at ({point.latitude},{point.longitude}) -> {point.elevation}')
-
+                points.append(point)
     
+    return {
+        "name" : name,
+        "points" : points,
+        "file_path" : file_path
+    }
+

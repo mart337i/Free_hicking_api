@@ -1,11 +1,15 @@
 # util_routes.py
-from fastapi import APIRouter, HTTPException
+import base64
+from re import S
+from fastapi import APIRouter, HTTPException, File, UploadFile
 from fastapi.responses import FileResponse
 from fastapi_pagination import Page, paginate
-from typing import List
+from typing import List, Annotated
 from models.trail import Trail, TrailSchema
+from utils.gpx_utils import validate_gpx_file, calculate_total_distance,  estimate_walking_float, get_gpx_info
 from database import gpx_enabled
 from pydantic import ValidationError
+import shutil
 import logging
 import os
 
@@ -22,10 +26,8 @@ async def gpx_test_file():
 
 @router.get("/trails/", response_model=Page[Trail])
 async def get_trails():
-    # Fetch all trails from MongoDB
     trails_cursor = gpx_enabled.find()
 
-    # Filter and validate data according to Trail model
     trails: List[Trail] = []
     for trail_data in trails_cursor:
         try:
@@ -35,7 +37,6 @@ async def get_trails():
             _logger.warning(f"{e}")
             continue
 
-    # Apply pagination to the trails list
     return paginate(trails)
 
     
@@ -46,7 +47,7 @@ def upload_trail_to_db(trail: Trail):
     except Exception as e:
         raise ValueError(f"Failed to upload trail: {e}")
 
-@router.post("/upload/", response_model=Trail)
+@router.post("/upload-db/", response_model=Trail)
 async def add_trail(trail: Trail):
     try:
         trail_id = upload_trail_to_db(trail)
@@ -83,3 +84,35 @@ async def get_img_file(filename: str):
         raise HTTPException(status_code=404, detail="File not found.")
 
     return FileResponse(file_path)
+
+@router.post("upload-file", response_model=Trail)
+async def uploadfile(file: UploadFile = File(...)):
+    #Should have used regex but this is more readable
+    special_characters=['@','#','$','.','_']
+    if not validate_gpx_file(str(file.filename)):
+        raise HTTPException(status_code=400, detail="File cant be validated")
+    
+    file_location = f"{GPX_STORAGE_PATH}/{file.filename}"
+    with open(file_location, "wb+") as file_object:
+        shutil.copyfileobj(file.file, file_object)   
+
+    gpx_info = get_gpx_info(str(file.filename))
+
+    distance = calculate_total_distance(gpx_info["points"])
+
+    walking_time = estimate_walking_float(distance_km=distance)
+
+    if not gpx_info["name"]:
+        for i in special_characters:
+            gpx_info["name"] = (str(file.filename)).replace(i," ")
+
+    return {
+        "schema_version" : 1,
+        "name" : gpx_info["name"],
+        "location" : "", #chould do reverse Reverse Geocoding mapping
+        "filename" : str(file.filename),
+        "gpx_path" : str(file_location),
+        "image" : str(""), 
+        "length" : str(round(distance,2)),
+        "estimatedTime" : str(round(walking_time,2))
+    }

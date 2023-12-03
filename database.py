@@ -6,7 +6,7 @@ import urllib.parse
 # Load environment variables from .env file
 load_dotenv()
 
-# Access the serial number
+# Access the ENV
 _username = os.getenv("USERNAME", "")
 _password = os.getenv("PASSWORD", "")
 
